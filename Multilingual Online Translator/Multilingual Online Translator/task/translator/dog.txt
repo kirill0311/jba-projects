@@ -1,5 +1,0 @@
-Russian Translations:
-собака
-Russian Example:
-Mom says someday I can get another dog.
-Мама говорит, что когда-нибудь у меня будет другая собака.

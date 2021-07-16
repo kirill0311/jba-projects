@@ -1,5 +1,0 @@
-Russian Translations:
-слово
-Russian Example:
-I see this word, hear this word, feel this word everywhere.
-Я вижу это слово, слышу это слово, чувствую это слово повсюду.
