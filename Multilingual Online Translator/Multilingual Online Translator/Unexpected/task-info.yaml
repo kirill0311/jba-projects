@@ -1,0 +1,336 @@
+type: edu
+custom_name: stage7
+files:
+- name: translator/translator.py
+  visible: true
+  text: |
+    print('Hello, World!')
+  learner_created: false
+- name: tests.py
+  visible: false
+  text: |
+    from hstest.stage_test import StageTest
+    from hstest.test_case import TestCase
+    from hstest.check_result import CheckResult
+    import requests
+    from itertools import chain
+    from bs4 import BeautifulSoup
+    import sys
+    import os
+
+
+    if sys.platform.startswith("win"):
+        import _locale
+        # pylint: disable=protected-access
+        _locale._getdefaultlocale = (lambda *args: ['en_US', 'utf8'])
+
+    CheckResult.correct = lambda: CheckResult(True, '')
+    CheckResult.wrong = lambda feedback: CheckResult(False, feedback)
+
+    languages = ["arabic", "german", "english", "spanish", "french",
+                 "hebrew", "japanese", "dutch", "polish", "portuguese",
+                 "romanian", "russian", "turkish"]
+
+
+    class TranslatorTest(StageTest):
+        def generate(self):
+            return [
+                TestCase(args=['english', 'all', 'brrrrrrrrrrrrrrrrk'], check_function=self.check1),
+                TestCase(args=['english', 'korean', 'hello'], check_function=self.check2),
+                TestCase(args=['french', 'all', 'chute'], check_function=self.check3, attach='french\nall\nchute')
+            ]
+
+        def check1(self, reply, attach):
+            reply = reply.lower()
+            if 'unable' not in reply:
+                return CheckResult.wrong('Your program does not output an error message for an nonexistent word.')
+            return CheckResult.correct()
+
+        def check2(self, reply, attach):
+            if 'support korean' in reply.lower():
+                return CheckResult.correct()
+
+            return CheckResult.wrong(
+                'Your program does not output an error message about an unsupported language.')
+
+        def check_output(self, output, true_results):
+            output = output.lower()
+
+            for language in true_results:
+                translations_title = '{} translation'.format(language).lower()
+                if translations_title not in output:
+                    return False, 'The title \"{0} translation\" was not found.'.format(language)
+                examples_title = "{0} example".format(language).lower()
+                translations = output[output.index(translations_title):].strip()
+
+                if examples_title not in translations.lower():
+                    return False, 'The title \"{0}\" was not found.\n' \
+                                  'Make sure you output this title before example sentences for this language,\n' \
+                                  'and that you output it after translations for it.'.format(examples_title)
+
+                # the beginning of the section with context examples
+                examples_index = translations.index(examples_title)
+                try:
+                    # the end of the section with context examples
+                    examples_end = translations.index('translation', examples_index)
+                except ValueError:
+                    # if the language is last in the list, the end of the context examples is the end of the output
+                    examples_end = None
+                examples = translations[examples_index:examples_end].split('\n')
+                translations = translations[:examples_index].strip().split('\n')
+                examples = [line for line in examples if line and examples_title not in line]
+                translations = [line for line in translations if line and translations_title not in line]
+
+                if len(translations) == 0:
+                    return False, "No translations for {0} are found.\n" \
+                                  "Make sure that each translated word is placed in a new line\n" \
+                                  "and that translations precede examples.".format(language)
+
+                if len(examples) == 0:
+                    return False, "No context examples for {0} are found.\n" \
+                                  "Make sure that your context examples follow the translations\n" \
+                                  "and that each example is placed in a new line.".format(language)
+
+                true_translations, true_examples = true_results[language]
+                if true_translations == "Connection error":
+                    return CheckResult.wrong("Connection error occurred while connecting to the context.reverso.net\n"
+                                             "Please, try again a bit later.")
+
+                translations_intersection = [True for user_translation in translations
+                                             if user_translation in true_translations]
+                if not translations_intersection:
+                    return False, "No correct translations for {0} are found.\n" \
+                                  "Please, output the first found translation " \
+                                  "of the given word for this language if you output one translation.".format(language)
+
+                examples_intersection = [True for user_example in examples if user_example in true_examples]
+                if not examples_intersection:
+                    return False, "No correct examples for {0} are found.\n" \
+                                  "If you output only one example for each language,\n" \
+                                  "please, use the first example that you find on the web page.".format(language)
+
+            return True, ''
+
+        def check3(self, reply, attach):
+            l1, l2, word = attach.split("\n")
+            result_dict = get_results(l1, l2, word)
+
+            file_name = word + '.txt'
+            if not os.path.exists(file_name):
+                return CheckResult.wrong("Looks like you didn't create a file named <word>.txt \n"
+                                         "where <word> is the word that should be translated.")
+
+            with open(file_name, 'r', encoding='utf-8') as fh:
+                try:
+                    output = fh.read()
+                except UnicodeDecodeError:
+                    return CheckResult.wrong("UnicodeDecodeError occurred while reading your file. \n"
+                                             "Perhaps you used the wrong encoding? Please, use utf-8 encoding.")
+
+            if output.lower().strip() not in reply.lower().strip():
+                return CheckResult.wrong("The output to the terminal does not seem to contain the content of the file.\n"
+                                         "Please make sure that you output the results to the terminal as well.\n"
+                                         "Also, make sure that the output to the terminal contains all the data written to the file unmodified.")
+
+            is_correct, feedback = self.check_output(output, result_dict)
+            if not is_correct:
+                if "Connection error" not in feedback:
+                    feedback = 'A problem occurred while reading the file that you created.\n' + feedback
+                return CheckResult.wrong(feedback)
+
+            try:
+                os.remove(file_name)
+            except:
+                return CheckResult.wrong("An error occurred while your file was being removed.\n"
+                                         "Please make sure that you close all the files after writing the results in them.")
+
+            return CheckResult.correct()
+
+
+    def get_results(l1, l2, word):
+        if l2 == 'all':
+            target_languages = [language for language in languages if language != l1]
+        else:
+            target_languages = [l2]
+
+        result_dict = {}
+
+        for lang_to in target_languages:
+            url = f"https://context.reverso.net/translation/{l1}-{lang_to}/{word}"
+            user_agent = 'Mozilla/5.0'
+            try:
+                response = requests.get(url, timeout=10, headers={'User-Agent': user_agent})
+            except requests.exceptions.ReadTimeout:
+                return "Connection error", "Connection error"
+            except requests.exceptions.ConnectionError:
+                return "Connection error", "Connection error"
+
+            raw_contents = BeautifulSoup(response.content, 'html.parser')
+            translations = raw_contents.find_all('a', {"class": 'translation'})
+            sentences_src, sentences_target = \
+                raw_contents.find_all('div', {"class": "src ltr"}), \
+                raw_contents.find_all('div', {"class": ["trg ltr", "trg rtl arabic", "trg rtl"]})
+
+            translation_list = [translation.get_text().strip().lower() for translation in translations]
+            sentence_list = [sentence.get_text().strip().lower() for sentence in
+                             list(chain(*[sentence_pair for sentence_pair in zip(sentences_src, sentences_target)]))]
+            result_dict[lang_to] = [set(translation_list), set(sentence_list)]
+
+        return result_dict
+
+
+    if __name__ == '__main__':
+        TranslatorTest('translator.translator').run_tests()
+  learner_created: false
+- name: translator/dog.txt
+  visible: true
+  text: |
+    Russian Translations:
+    собака
+    Russian Example:
+    Mom says someday I can get another dog.
+    Мама говорит, что когда-нибудь у меня будет другая собака.
+  learner_created: true
+- name: translator/what.txt
+  visible: true
+  text: |
+    Arabic Translations:
+    ما
+    Arabic Example:
+    FBI! Everyone stop what what you're doing!
+    مكتب التحقيقات الفدرالي الجميع أوقفوا ما تفعلونه
+    German Translations:
+    was
+    German Example:
+    And we both know what what Nina Sharp wants, she gets.
+    Und wir beiden wissen: Was Nina Sharp bekommen will, bekommt sie auch.
+    Spanish Translations:
+    lo que
+    Spanish Example:
+    I could care less what what anyone thinks of me.
+    No me interesa en absoluto lo que piensan los demás de mí.
+    French Translations:
+    ce que
+    French Example:
+    Everywhere, everything, what you say, what you eat, what you wear, what you think.
+    Partout, tout le temps, ce que tu dis, ce que tu manges, ce que tu portes, ce que tu penses.
+    Hebrew Translations:
+    מה
+    Hebrew Example:
+    You know what what wasn't? Visiting my mother.
+    את יודעת מה לא הייתה החלטה טובה.
+    Japanese Translations:
+    何
+    Japanese Example:
+    While scanning the memory module memtest collects information what is wrong.
+    メモリモジュールを調べている間、memtest は何が問題なのかに関する情報を収集しています。
+    Dutch Translations:
+    wat
+    Dutch Example:
+    Then the Gemeentemuseum Den Haag has just what what you are looking for.
+    Dan biedt het Gemeentemuseum Den Haag precies wat u wenst.
+    Polish Translations:
+    jaki
+    Polish Example:
+    Demonstrate what life is and what it could be.
+    Zademonstrujemy kontrast pomiędzy tym jakie życie jest, a jakie mogłoby być.
+    Portuguese Translations:
+    o que
+    Portuguese Example:
+    Machines know what people watch, what people read, what people buy, even what people feel.
+    As máquinas sabe o que as pessoas vêem, o que lêem, o que compram e até o que sentem.
+    Romanian Translations:
+    ce
+    Romanian Example:
+    Perhaps we should ask Zak what what he wants.
+    Poate ar trebui să îl întrebați pe Zak ce își dorește el.
+    Russian Translations:
+    что
+    Russian Example:
+    It must be made completely clear to our citizens what is acceptable and what is not.
+    Необходимо совершенно четко разъяснить нашим гражданам, что является приемлемым и что нет.
+    Turkish Translations:
+    nasıl
+    Turkish Example:
+    People really think that what what we do - it's fun.
+    Esasında insanlar yaptığımız şeyin eğlenceli olduğunu düşünüyor.
+  learner_created: true
+- name: translator/one.txt
+  visible: true
+  text: |
+    Arabic Translations:
+    واحد
+    Arabic Example:
+    Descriptions: one African-American, one crippled, one skinny, one handsome.
+    المواصفات: واحد من العرق الأفريقي الأمريكي واحدٌ معوق, واحدٌ ضعيف البنية واحدٌ وسيم
+    Arabic Translations:
+    واحد
+    Arabic Example:
+    Descriptions: one African-American, one crippled, one skinny, one handsome.
+    المواصفات: واحد من العرق الأفريقي الأمريكي واحدٌ معوق, واحدٌ ضعيف البنية واحدٌ وسيم
+    German Translations:
+    einem
+    German Example:
+    TDM transmission system between at least one satellite, one base and one nodal station.
+    Zeitmultiplex-Übertragungsstation zwischen mindestens einer Satelliten-, einer Basis- und einer Knotenstation.
+    Spanish Translations:
+    una
+    Spanish Example:
+    The Firearms Protocol received one ratification and one accession.
+    Hubo una ratificación y una adhesión al Protocolo sobre las armas de fuego.
+    French Translations:
+    un
+    French Example:
+    The proposed recommendations were submitted and considered one by one.
+    Les projets de recommandation ont été présentés et examinés un par un.
+    Hebrew Translations:
+    אחד
+    Hebrew Example:
+    Cannot add the same property definition in more than one PropertyProfile.
+    אין אפשרות להוסיף את ההגדרה של אותו מאפיין ביותר מ - PropertyProfile אחד.
+    Japanese Translations:
+    もの
+    Japanese Example:
+    Remo Recover is one such well-known application.
+    Remo リカバリーはそのようなよく知られているアプリケーションの1つです.
+    Dutch Translations:
+    een
+    Dutch Example:
+    A binary cat has one head, one eye, one eye, one paw, one paw, one paw and one paw.
+    Een binaire kat heeft een kop, een oog, een oog, een poot, een poot, een poot en een poot.
+    Polish Translations:
+    jeden
+    Polish Example:
+    Descriptions: one African-American, one crippled, one skinny, one handsome.
+    Rysopisy: jeden Afroamerykanin, jeden kaleka, jeden chudzielec, jeden przystojniak.
+    Portuguese Translations:
+    único
+    Portuguese Example:
+    Request level one satellite visual surveillance.
+    Pedido de nível 1, de vigilância de vídeo por satélite.
+    Romanian Translations:
+    unul
+    Romanian Example:
+    But he is planning on taking us out one by one by one by one by one by one by one.
+    Dar el este de planificare pe luarea -ne unul câte unul de unul câte unul, câte unul pe unul câte unul.
+    Russian Translations:
+    один
+    Russian Example:
+    Descriptions: one African-American, one crippled, one skinny, one handsome.
+    Приметы: один афро-американец, один калека, один тощий и один красавчик.
+    Turkish Translations:
+    bir
+    Turkish Example:
+    Need one able-bodied seaman, one oiler and one baker.
+    Güçlü kuvvetli bir denizciye ihtiyacım var, bir benzinci ve bir de fırıncıya.
+  learner_created: true
+- name: translator/word.txt
+  visible: true
+  learner_created: true
+feedback_link: https://hyperskill.org/projects/99/stages/549/implement
+status: Solved
+feedback:
+  message: Well done! You've finished the project. Select a new project on <a href="https://hyperskill.org/projects">JetBrains
+    Academy</a> to continue learning.
+  time: Fri, 16 Jul 2021 22:58:33 UTC
+record: 7

@@ -1,0 +1,65 @@
+Arabic Translations:
+واحد
+Arabic Example:
+Descriptions: one African-American, one crippled, one skinny, one handsome.
+المواصفات: واحد من العرق الأفريقي الأمريكي واحدٌ معوق, واحدٌ ضعيف البنية واحدٌ وسيم
+Arabic Translations:
+واحد
+Arabic Example:
+Descriptions: one African-American, one crippled, one skinny, one handsome.
+المواصفات: واحد من العرق الأفريقي الأمريكي واحدٌ معوق, واحدٌ ضعيف البنية واحدٌ وسيم
+German Translations:
+einem
+German Example:
+TDM transmission system between at least one satellite, one base and one nodal station.
+Zeitmultiplex-Übertragungsstation zwischen mindestens einer Satelliten-, einer Basis- und einer Knotenstation.
+Spanish Translations:
+una
+Spanish Example:
+The Firearms Protocol received one ratification and one accession.
+Hubo una ratificación y una adhesión al Protocolo sobre las armas de fuego.
+French Translations:
+un
+French Example:
+The proposed recommendations were submitted and considered one by one.
+Les projets de recommandation ont été présentés et examinés un par un.
+Hebrew Translations:
+אחד
+Hebrew Example:
+Cannot add the same property definition in more than one PropertyProfile.
+אין אפשרות להוסיף את ההגדרה של אותו מאפיין ביותר מ - PropertyProfile אחד.
+Japanese Translations:
+もの
+Japanese Example:
+Remo Recover is one such well-known application.
+Remo リカバリーはそのようなよく知られているアプリケーションの1つです.
+Dutch Translations:
+een
+Dutch Example:
+A binary cat has one head, one eye, one eye, one paw, one paw, one paw and one paw.
+Een binaire kat heeft een kop, een oog, een oog, een poot, een poot, een poot en een poot.
+Polish Translations:
+jeden
+Polish Example:
+Descriptions: one African-American, one crippled, one skinny, one handsome.
+Rysopisy: jeden Afroamerykanin, jeden kaleka, jeden chudzielec, jeden przystojniak.
+Portuguese Translations:
+único
+Portuguese Example:
+Request level one satellite visual surveillance.
+Pedido de nível 1, de vigilância de vídeo por satélite.
+Romanian Translations:
+unul
+Romanian Example:
+But he is planning on taking us out one by one by one by one by one by one by one.
+Dar el este de planificare pe luarea -ne unul câte unul de unul câte unul, câte unul pe unul câte unul.
+Russian Translations:
+один
+Russian Example:
+Descriptions: one African-American, one crippled, one skinny, one handsome.
+Приметы: один афро-американец, один калека, один тощий и один красавчик.
+Turkish Translations:
+bir
+Turkish Example:
+Need one able-bodied seaman, one oiler and one baker.
+Güçlü kuvvetli bir denizciye ihtiyacım var, bir benzinci ve bir de fırıncıya.
